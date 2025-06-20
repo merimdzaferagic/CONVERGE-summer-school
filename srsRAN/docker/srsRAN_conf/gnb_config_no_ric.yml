@@ -1,0 +1,79 @@
+#ran_node_name: gnbd_001_001_00019b_0             # Optional TEXT (cu_cp_01). Sets the text ID associated with the gNB. Format: string without spaces.
+#gnb_id: 411                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
+#gnb_id_bit_length: 22               # Optional UNIT (22). Sets the bit length of the gnb_id above. Format: integer between [22 - 32]
+#gnb_cu_up_id: 0                     # Optional UINT (0). Sets the gNB CU-UP ID. Supported: [0 - 68719476735].
+#gnb_du_id: 0
+cu_cp:
+  amf:
+    addr: 10.53.1.2
+    bind_addr: 10.53.1.3
+    supported_tracking_areas:
+      -
+        tac: 7
+        plmn_list:
+          -
+            plmn:  "00101"  # PLMN '99940' and TAC '7'
+            tai_slice_support_list:
+              -
+                sst: 1
+
+ru_dummy:
+  dl_processing_delay: 1
+  time_scaling: 1
+
+
+#ru_sdr:
+ #device_driver: uhd
+ #device_args: type=b200
+ #clock: external
+ #srate: 30.72
+ #tx_gain: 15
+ #rx_gain: 15
+
+
+cell_cfg:
+  dl_arfcn: 663334
+  band: 77
+  channel_bandwidth_MHz: 100
+  common_scs: 30
+  plmn: "00101"
+  tac: 7
+  pci: 1
+  nof_antennas_dl: 1
+  nof_antennas_ul: 1
+
+  pusch:
+    max_ue_mcs: 28
+
+  pdsch:
+    max_ue_mcs: 28
+    mcs_table: qam256
+
+  tdd_ul_dl_cfg:
+    dl_ul_tx_period: 10                     # Optional INT (10). Sets the TDD pattern periodicity in slots. The combination of this value and the chosen numerology must lead to a TDD periodicity of 0.5, 0.625, 1, 1.25, 2, 2.5, 3, 4, 5 or 10 milliseconds. Supported: [2 - 80].
+    nof_dl_slots: 8                         # Optional INT (6). Number of consecutive full Downlink slots. Supported: [0-80].
+    nof_dl_symbols: 0                       # Optional INT (8). Number of Downlink symbols at the beginning of the slot following full Downlink slots. Supported: [0-13].
+    nof_ul_slots: 2                         # Optional INT (3). Number of consecutive full Uplink slots. Supported: [0 - 80].
+    nof_ul_symbols: 0                       # Optional INT (0). Number of Uplink symbols at the end of the slot preceding the first full Uplink slot. Supported: [0-13].
+
+log:
+  filename: "output.txt"
+  all_level: warning
+#  mac_level: debug       # MAC layer handles CQI reporting and scheduling.
+ # rlc_level: debug       # RLC layer helps monitor data flow and retransmissions.
+ # pdcp_level: debug      # PDCP layer is useful for throughput analysis.
+ # rrc_level: debug       # RRC layer logs UE capabilities, including CQI reporting.
+ # metrics_level: info   # Enables reporting of throughput-related metrics.
+ # phy_level: debug       # The PHY layer logs CQI reports and MCS information.
+
+
+pcap:
+  mac_enable: false
+  mac_filename: /tmp/gnb_mac.pcap
+  ngap_enable: false
+  ngap_filename: /tmp/gnb_ngap.pcap
+
+metrics:
+  addr: 172.19.1.4                # Metrics-server IP
+  port: 55555                     # Metrics-server Port
+  enable_json: true
