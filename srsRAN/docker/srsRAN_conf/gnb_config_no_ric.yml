@@ -1,8 +1,8 @@
-#ran_node_name: gnbd_001_001_00019b_0             # Optional TEXT (cu_cp_01). Sets the text ID associated with the gNB. Format: string without spaces.
-#gnb_id: 411                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
-#gnb_id_bit_length: 22               # Optional UNIT (22). Sets the bit length of the gnb_id above. Format: integer between [22 - 32]
-#gnb_cu_up_id: 0                     # Optional UINT (0). Sets the gNB CU-UP ID. Supported: [0 - 68719476735].
-#gnb_du_id: 0
+ran_node_name: gnbd_001_001_00019b_0             # Optional TEXT (cu_cp_01). Sets the text ID associated with the gNB. Format: string without spaces.
+gnb_id: 411                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
+gnb_id_bit_length: 22               # Optional UNIT (22). Sets the bit length of the gnb_id above. Format: integer between [22 - 32]
+gnb_cu_up_id: 0                     # Optional UINT (0). Sets the gNB CU-UP ID. Supported: [0 - 68719476735].
+gnb_du_id: 0
 cu_cp:
   amf:
     addr: 10.53.1.2
@@ -32,10 +32,16 @@ ru_dummy:
 
 
 cell_cfg:
+  #use this
   dl_arfcn: 663334
   band: 77
-  channel_bandwidth_MHz: 100
+  channel_bandwidth_MHz: 40
   common_scs: 30
+  #or this
+  #dl_arfcn: 536020
+  #band: auto
+  #channel_bandwidth_MHz: 40
+  #common_scs: 15
   plmn: "00101"
   tac: 7
   pci: 1

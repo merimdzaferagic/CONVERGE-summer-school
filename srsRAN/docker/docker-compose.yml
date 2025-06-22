@@ -1,39 +1,15 @@
-#
-# Copyright 2021-2025 Software Radio Systems Limited
-#
-# This file is part of srsRAN
-#
-# srsRAN is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of
-# the License, or (at your option) any later version.
-#
-# srsRAN is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License for more details.
-#
-# A copy of the GNU Affero General Public License can be found in
-# the LICENSE file in the top-level directory of this distribution
-# and at http://www.gnu.org/licenses/.
-#
-version: '3.9'
-
 services:
   5gc:
     container_name: open5gs_5gc
     build:
       context: open5gs
       target: open5gs
-      network: host
       args:
         OS_VERSION: "22.04"
         OPEN5GS_VERSION: "v2.7.0"
     env_file:
       - ${OPEN_5GS_ENV_FILE:-open5gs/open5gs.env}
     privileged: true
-    depends_on:
-      - ric_submgr
     ports:
       - "9999:9999/tcp"
     # Uncomment port to use the 5gc from outside the docker network
@@ -55,7 +31,6 @@ services:
     image: srsran/gnb
     build:
       context: ..
-      network: host
       dockerfile: docker/Dockerfile
       args:
         OS_VERSION: "24.04"
@@ -67,17 +42,17 @@ services:
       - CAP_SYS_PTRACE
     volumes:
       # Access USB to use some SDRs
-      - /dev/bus/usb/:/dev/bus/usb/
+      # - /dev/bus/usb/:/dev/bus/usb/
       # Sharing images between the host and the pod.
       # It's also possible to download the images inside the pod
-      - /usr/share/uhd/images:/usr/share/uhd/images
+      # - /usr/share/uhd/images:/usr/share/uhd/images
       # Save logs and more into gnb-storage
       - gnb-storage:/tmp
     # It creates a file/folder into /config_name inside the container
     # Its content would be the value of the file used to create the config
     #configs:
     #  - gnb_config.yml
-      - ./srsRAN_conf/gnb_config_oranSC.yml:/gnb_config.yml
+      - ./srsRAN_conf/gnb_config_no_ric.yml:/gnb_config.yml
       - ./srsRAN_conf/testmode.yml:/testmode.yml
     # Customize your desired network mode.
     # current netowrk configuration creastes a private netwoek with both containers attached
@@ -87,8 +62,6 @@ services:
         ipv4_address: ${GNB_IP:-10.53.1.3}
       metrics:
         ipv4_address: 172.19.1.3
-      ric_network:
-        ipv4_address: 10.0.2.88
     # Start GNB container after 5gc is up and running
     depends_on:
       5gc:
@@ -96,15 +69,14 @@ services:
     # Command to run into the final container
     #command: gnb -c gnb_config.yml -c testmode.yml cu_cp amf --addr ${OPEN5GS_IP:-10.53.1.2} --bind_addr ${GNB_IP:-10.53.1.3}
     command: gnb -c gnb_config.yml -c testmode.yml
-    #command: sh -c "sleep 25 && gnb -c gnb_config.yml -c testmode.yml"
     stdin_open: true
     tty: true
+
 
   metrics-server:
     container_name: metrics_server
     image: srsran/metrics_server
     build:
-      network: host
       context: metrics_server
     environment:
       - PORT=${METRICS_SERVER_PORT}
@@ -138,7 +110,6 @@ services:
     container_name: grafana
     image: srsran/grafana
     build:
-      network: host
       context: grafana
       args:
         GRAFANA_VERSION: ${DOCKER_GRAFANA_VERSION}
@@ -155,186 +126,6 @@ services:
     networks:
       metrics:
         ipv4_address: 172.19.1.6
-
-  dbaas:
-    container_name: ric_dbaas
-    hostname: dbaas
-    image: nexus3.o-ran-sc.org:10002/o-ran-sc/ric-plt-dbaas:${DBAAS_VER}
-    command: redis-server --loadmodule /usr/local/libexec/redismodule/libredismodule.so
-    networks:
-      ric_network:
-        ipv4_address: ${DBAAS_IP:-10.0.2.12}
-
-  rtmgr_sim:
-    container_name: ric_rtmgr_sim
-    hostname: rtmgr_sim
-    image: rtmgr_sim:${SC_RIC_VERSION}
-    build:
-      context: ./oran-sc-ric/ric/images/rtmgr_sim
-      dockerfile: ./Dockerfile
-      network: host
-      args:
-        SC_RIC_VERSION: ${SC_RIC_VERSION}
-    env_file:
-      - .env
-    environment:
-      - CONTAINER_NAME=ric_${RTMGR_SIM_NAME}
-      - HOST_NAME=ric_${RTMGR_SIM_NAME}_host
-      - POD_NAME=${RTMGR_SIM_NAME}_pod
-      - SERVICE_NAME=ric_${RTMGR_SIM_NAME}_service
-      - CFGFILE=/cfg/rtmgr-config.yaml
-      - RMR_SEED_RT=/opt/config/uta-rtg.rt
-      - RMR_SRC_ID=${RTMGR_SIM_IP}
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/rtmgr.yaml
-        target: /opt/rmsimulator/resources/configuration.yaml
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target: /opt/config/uta-rtg.rt
-    networks:
-      ric_network:
-        ipv4_address: ${RTMGR_SIM_IP:-10.0.2.15}
-
-  submgr:
-    container_name: ric_submgr
-    hostname: submgr
-    image: nexus3.o-ran-sc.org:10002/o-ran-sc/ric-plt-submgr:${SUBMGR_VER}
-    depends_on:
-      - dbaas
-    env_file:
-      - .env
-    environment:
-      - CONTAINER_NAME=ric_${SUBMGR_NAME}
-      - HOST_NAME=ric_${SUBMGR_NAME}_host
-      - POD_NAME=${SUBMGR_NAME}_pod
-      - SERVICE_NAME=ric_${SUBMGR_NAME}_service
-      - CFG_FILE=/opt/config/submgr-config.yaml
-      - RMR_SEED_RT=/opt/config/submgr-uta-rtg.rt
-      - RMR_SRC_ID=${SUBMGR_IP}
-    command: ./submgr -f $${CFG_FILE}
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/submgr.yaml
-        target: /opt/config/submgr-config.yaml
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target: /opt/config/submgr-uta-rtg.rt
-    networks:
-      ric_network:
-        ipv4_address: ${SUBMGR_IP:-10.0.2.13}
-
-  e2term:
-    container_name: ric_e2term
-    hostname: e2term
-    image: nexus3.o-ran-sc.org:10002/o-ran-sc/ric-plt-e2:${E2TERM_VER}
-    #Uncomment ports to use the RIC from outside the docker network.
-    #ports:
-    #  - "36421:36421/sctp"
-    env_file:
-      - .env
-    environment:
-      - CONTAINER_NAME=ric_${E2TERM_NAME}
-      - HOST_NAME=ric_${E2TERM_NAME}_host
-      - POD_NAME=${E2TERM_NAME}_pod
-      - SERVICE_NAME=ric_${E2TERM_NAME}_service
-      - print=1
-      - RMR_SEED_RT=/opt/e2/dockerRouter.txt
-      - RMR_SRC_ID=${E2TERM_IP}
-    command: ./e2 -p config -f config.conf
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/e2term.conf
-        target: /opt/e2/config/config.conf
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target: /opt/e2/dockerRouter.txt
-    networks:
-      ric_network:
-        ipv4_address: ${E2TERM_IP:-10.0.2.10}
-
-  appmgr:
-    container_name: ric_appmgr
-    hostname: appmgr
-    image: nexus3.o-ran-sc.org:10002/o-ran-sc/ric-plt-appmgr:${APPMGR_VER}
-    env_file:
-      - .env
-    environment:
-      - CONTAINER_NAME=ric_${APPMGR_NAME}
-      - HOST_NAME=ric_${APPMGR_NAME}_host
-      - POD_NAME=${APPMGR_NAME}_pod
-      - SERVICE_NAME=ric_${APPMGR_NAME}_service
-      - RMR_SEED_RT=/opt/ric/config/router.txt
-      - RMR_SRC_ID=${APPMGR_IP}
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target:  /opt/ric/config/router.txt
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/appmgr.yaml
-        target: /opt/ric/config/appmgr.yaml
-    networks:
-      ric_network:
-        ipv4_address: ${APPMGR_IP:-10.0.2.14}
-
-  e2mgr:
-    container_name: ric_e2mgr
-    hostname: e2mgr
-    image: nexus3.o-ran-sc.org:10002/o-ran-sc/ric-plt-e2mgr:${E2MGR_VER}
-    env_file:
-      - .env
-    environment:
-      - CONTAINER_NAME=ric_${E2MGR_NAME}
-      - HOST_NAME=ric_${E2MGR_NAME}_host
-      - POD_NAME=${E2MGR_NAME}_pod
-      - SERVICE_NAME=ric_${E2MGR_NAME}_service
-      - RMR_SEED_RT=/opt/E2Manager/router.txt
-      - RMR_SRC_ID=${E2MGR_IP}
-    command: ./main -port=3800 -f /opt/E2Manager/resources/configuration.yaml
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target: /opt/E2Manager/router.txt
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/e2mgr.yaml
-        target: /opt/E2Manager/resources/configuration.yaml
-    networks:
-      ric_network:
-        ipv4_address: ${E2MGR_IP:-10.0.2.11}
-
-  python_xapp_runner:
-    container_name: python_xapp_runner
-    hostname: python_xapp_runner
-    image: python_xapp_runner:${SC_RIC_VERSION}
-    build:
-      context: ./oran-sc-ric/ric/images/ric-plt-xapp-frame-py
-      dockerfile: ./Dockerfile
-      network: host
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=0
-      - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-      - RMR_SEED_RT=/opt/ric/config/uta-rtg.rt
-      - RMR_SRC_ID=${XAPP_PY_RUNNER_IP}
-      - RMR_RTG_SVC # leave empty, so RMR works correctly with RT Manager Simulator
-    stdin_open: true
-    tty: true
-    entrypoint: [/bin/bash]
-    volumes:
-      - type: bind
-        source: ./oran-sc-ric/ric/configs/routes.rtg
-        target: /opt/ric/config/uta-rtg.rt
-      - type: bind
-        source: ./oran-sc-ric/xApps/python
-        target: /opt/xApps
-      # Uncomment if you want to use your local ric-plt-xapp-frame-py copy inside the container
-      #- type: bind
-      #  source: ./Path/to/your/local/ric-plt-xapp-frame-py
-      #  target: /opt/ric-plt-xapp-frame-py
-    networks:
-      ric_network:
-        ipv4_address: ${XAPP_PY_RUNNER_IP:-10.0.2.20}
 
 configs:
   gnb_config.yml:
@@ -356,8 +147,3 @@ networks:
       driver: default
       config:
         - subnet: 172.19.1.0/24
-  ric_network:
-    ipam:
-      driver: default
-      config:
-        - subnet: 10.0.2.0/24

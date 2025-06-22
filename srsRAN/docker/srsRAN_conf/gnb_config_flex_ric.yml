@@ -39,6 +39,8 @@ cell_cfg:
   plmn: "00101"
   tac: 7
   pci: 1
+  nof_antennas_dl: 1
+  nof_antennas_ul: 1
 
   pusch:
     max_ue_mcs: 28
