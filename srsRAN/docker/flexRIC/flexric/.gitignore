@@ -1,7 +1,0 @@
-*.out 
-*.py
-*.swp
-build/
-tags
-archives/
-test_results*.html
